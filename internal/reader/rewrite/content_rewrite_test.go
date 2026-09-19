@@ -1499,3 +1499,42 @@ func TestStripImageQueryParamsSimple(t *testing.T) {
 		t.Errorf(`Not expected output: got "%+v" instead of "%+v"`, testEntry, controlEntry)
 	}
 }
+
+func TestRewriteGifPlaceholderWithDataSrc(t *testing.T) {
+	// CheckMK / Concrete CMS pattern: img src is a 1x1 GIF placeholder, real URL in data-src.
+	controlEntry := &model.Entry{
+		URL:   "https://example.org/article",
+		Title: `A title`,
+		Content: `<img src="https://example.org/real-image.jpg" data-src="https://example.org/real-image.jpg" alt="Photo" loading="lazy"/>`,
+	}
+	testEntry := &model.Entry{
+		URL:   "https://example.org/article",
+		Title: `A title`,
+		Content: `<img src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==" data-src="https://example.org/real-image.jpg" alt="Photo" loading="lazy">`,
+	}
+	ApplyContentRewriteRules(testEntry, "add_dynamic_image")
+
+	if !reflect.DeepEqual(testEntry, controlEntry) {
+		t.Errorf(`Not expected output: got "%+v" instead of "%+v"`, testEntry, controlEntry)
+	}
+}
+
+func TestRewritePictureSourceSrcset(t *testing.T) {
+	// ORF.at pattern: <picture><source srcset="real-url 2x"><img src="data:image/svg+xml..."></picture>
+	// The img has no data-src; the real URL lives in the sibling <source srcset>.
+	controlEntry := &model.Entry{
+		URL:   "https://example.org/article",
+		Title: `A title`,
+		Content: `<picture><source srcset="https://example.org/image-2x.jpg 2x, https://example.org/image-1x.jpg 1x"/><img src="https://example.org/image-2x.jpg" alt="Photo"/></picture>`,
+	}
+	testEntry := &model.Entry{
+		URL:   "https://example.org/article",
+		Title: `A title`,
+		Content: `<picture><source srcset="https://example.org/image-2x.jpg 2x, https://example.org/image-1x.jpg 1x"><img src="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%3E%3C/svg%3E" alt="Photo"></picture>`,
+	}
+	ApplyContentRewriteRules(testEntry, "add_dynamic_image")
+
+	if !reflect.DeepEqual(testEntry, controlEntry) {
+		t.Errorf(`Not expected output: got "%+v" instead of "%+v"`, testEntry, controlEntry)
+	}
+}
