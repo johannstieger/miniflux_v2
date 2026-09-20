@@ -179,8 +179,24 @@ func addDynamicImage(entryContent string) string {
 	// Case 1: <img src="data:image/gif;..." data-src="real-url"> → replace src with data-src.
 	// Case 2: <picture><source srcset="real-url"><img src="data:image/svg+xml;..."></picture>
 	//         → extract first URL from srcset and set it as img src.
+	// Case 3: <picture><source srcset="..."><img srcset="real-url" (no src)></picture>
+	//         → extract first URL from img srcset and set it as img src (ORF.at opener pattern).
 	doc.Find("img").Each(func(i int, img *goquery.Selection) {
 		src := img.AttrOr("src", "")
+
+		// Case 3: img has no src at all but has a srcset — set src from first srcset entry.
+		if src == "" {
+			if imgSrcset, ok := img.Attr("srcset"); ok && imgSrcset != "" {
+				firstURL := strings.Fields(imgSrcset)[0]
+				firstURL = strings.TrimSuffix(firstURL, ",")
+				if firstURL != "" {
+					img.SetAttr("src", firstURL)
+					changed = true
+				}
+			}
+			return
+		}
+
 		if !strings.HasPrefix(src, "data:image/gif") && !strings.HasPrefix(src, "data:image/svg+xml") {
 			return
 		}

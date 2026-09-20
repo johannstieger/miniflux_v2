@@ -1538,3 +1538,23 @@ func TestRewritePictureSourceSrcset(t *testing.T) {
 		t.Errorf(`Not expected output: got "%+v" instead of "%+v"`, testEntry, controlEntry)
 	}
 }
+
+func TestRewritePictureImgSrcsetNoSrc(t *testing.T) {
+	// ORF.at opener pattern: <picture> with <source> elements and an <img> that has
+	// only srcset but no src attribute at all. The first URL from img srcset is used as src.
+	controlEntry := &model.Entry{
+		URL:   "https://example.org/article",
+		Title: `A title`,
+		Content: `<picture><source media="(min-width: 601px)" srcset="https://example.org/wide.jpg 2x"/><source media="(max-width: 600px)" srcset="https://example.org/narrow-800.jpg 800w, https://example.org/narrow-1280.jpg 1280w"/><img src="https://example.org/full.jpg" srcset="https://example.org/full.jpg" alt="A description" width="4900" height="1960"/></picture>`,
+	}
+	testEntry := &model.Entry{
+		URL:   "https://example.org/article",
+		Title: `A title`,
+		Content: `<picture><source media="(min-width: 601px)" srcset="https://example.org/wide.jpg 2x"><source media="(max-width: 600px)" srcset="https://example.org/narrow-800.jpg 800w, https://example.org/narrow-1280.jpg 1280w"><img srcset="https://example.org/full.jpg" alt="A description" width="4900" height="1960"></picture>`,
+	}
+	ApplyContentRewriteRules(testEntry, "add_dynamic_image")
+
+	if !reflect.DeepEqual(testEntry, controlEntry) {
+		t.Errorf(`Not expected output: got "%+v" instead of "%+v"`, testEntry, controlEntry)
+	}
+}
